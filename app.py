@@ -1,16 +1,57 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 import streamlit as st
-from streamlit_ace import st_ace, THEMES, LANGUAGES
+from streamlit.components import v1 as components
+from spacy import load, displacy
 
-st.title("Nosso Editor de Texto")
+nlp = load('pt_core_news_lg')
 
-c1 , c2 = st.columns([3, 1])
+bar = st.sidebar
 
-with c1:
-    content = st_ace(
-        theme=c2.selectbox('Tema', options=THEMES),
-        language=c2.selectbox('Linguagem', options=LANGUAGES, index=121),
-        font_size=c2.slider('Tam. Fonte', 25),
-        min_lines=50
+escolha = bar.selectbox(
+    'Escolha uma categoria',
+    ['Entidades', 'Gramártica']
+)
+
+text = st.text_area('Bote um textão aqui')
+
+doc = nlp(text)
+
+if text and escolha == 'Entidades':
+    data = displacy.render(doc, style='ent')
+
+    with st.expander('Dados do spaCy'):
+        components.html(
+            data, scrolling=True, height=300
+        )
+
+    a, b = st.columns(2)
+    for e in doc.ents:
+        a.info(e)
+        b.warning(e.label_)
+
+
+if text and escolha == 'Gramártica':
+    filtro = bar.multiselect(
+        'Filtro',
+        ['VERB', 'PROPN', 'ADV', 'AUX'],
+        default=['VERB', 'PROPN']
     )
+    with st.expander('Dados do spaCy'):
+        st.json(doc.to_json())
 
-    content
+    container = st.container()
+    a, b, c = container.columns(3)
+
+    a.subheader('Token')
+    b.subheader('Tag')
+    c.subheader('Morph')
+
+    for t in doc:
+        if t.tag_ in filtro:
+            container = st.container()
+            a, b, c = container.columns(3)
+            a.info(t)
+            b.warning(t.tag_)
+            c.error(t.morph)
